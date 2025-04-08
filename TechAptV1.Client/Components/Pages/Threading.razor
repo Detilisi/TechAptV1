@@ -7,17 +7,29 @@
     <button class="btn btn-primary" @onclick="Start" disabled="@_isComputing">Start</button>
     <button class="btn btn-success" @onclick="Save" disabled="@( !_canSave )">Save</button>
 </div>
-<div>
-    <hr>
-    <h4>Numbers:</h4>
-    <ul>
-        <li>Odd: <strong>@this._oddNumbers</strong></li>
-        <li>Even: <strong>@this._evenNumbers</strong></li>
-        <li>Prime: <strong>@this._primeNumbers</strong></li>
-        <li>Total: <strong>@this._totalNumbers</strong></li>
-    </ul>
-    <hr>
-</div>
+
+@if (_isComputing)
+{
+    <div class="mt-3 text-info d-flex align-items-center gap-2">
+        <div class="spinner-border spinner-border-sm" role="status"></div>
+        <span>Generating numbers, please wait...</span>
+    </div>
+}
+else
+{
+    <div>
+        <hr>
+        <h4>Numbers:</h4>
+        <ul>
+            <li>Odd: <strong>@this._oddNumbers</strong></li>
+            <li>Even: <strong>@this._evenNumbers</strong></li>
+            <li>Prime: <strong>@this._primeNumbers</strong></li>
+            <li>Total: <strong>@this._totalNumbers</strong></li>
+        </ul>
+        <hr>
+    </div>
+}
+
 
 @code {
 
