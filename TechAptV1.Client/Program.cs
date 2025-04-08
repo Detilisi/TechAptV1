@@ -2,6 +2,7 @@
 
 using Serilog;
 using TechAptV1.Client.Components;
+using TechAptV1.Client.Services;
 
 namespace TechAptV1.Client
 {
@@ -21,6 +22,12 @@ namespace TechAptV1.Client
 
                 // Add services to the container.
                 builder.Services.AddRazorComponents().AddInteractiveServerComponents();
+
+                // Add custom services to the container.
+                builder.Services
+                    .AddSingleton<DataService>()
+                    .AddSingleton<ThreadingService>()
+                    ;
 
                 var app = builder.Build();
 
