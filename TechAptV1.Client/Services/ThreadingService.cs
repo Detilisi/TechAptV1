@@ -36,6 +36,8 @@ public sealed class ThreadingService(ILogger<ThreadingService> logger, DataServi
     public async Task Start()
     {
         logger.LogInformation("Start");
+
+        ResetState();
         _cts = new CancellationTokenSource();
 
         var tasks = new List<Task>
@@ -134,5 +136,14 @@ public sealed class ThreadingService(ILogger<ThreadingService> logger, DataServi
             Interlocked.Increment(ref counter);
             return true;
         }
+    }
+
+    private void ResetState()
+    {
+        _oddNumbers = 0;
+        _evenNumbers = 0;
+        _primeNumbers = 0;
+        _totalNumbers = 0;
+        _globalNumberList.Clear();
     }
 }
