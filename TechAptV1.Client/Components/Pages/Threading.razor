@@ -1,10 +1,11 @@
 ﻿@page "/threading"
+@using TechAptV1.Client.Services
 
 <h3>Threading &amp; Data Persistence</h3>
 
 <div>
-    <button class="btn btn-primary" @onclick="(async () => await this.Start())">Start</button>
-    <button class="btn btn-primary" @onclick="(async () => await this.Save())">Save</button>
+    <button class="btn btn-primary" @onclick="Start" disabled="@_isComputing">Start</button>
+    <button class="btn btn-success" @onclick="Save" disabled="@( !_canSave )">Save</button>
 </div>
 <div>
     <hr>
@@ -20,17 +21,49 @@
 
 @code {
 
+    //Dependencies
     [Inject] public required ILogger<Threading> Logger { get; set; }
+    [Inject] public required ThreadingService ThreadingService { get; set; }
 
+    //State
     private int _oddNumbers = 0;
     private int _evenNumbers = 0;
     private int _primeNumbers = 0;
     private int _totalNumbers = 0;
 
+    private bool _canSave = false;
+    private bool _isComputing = false;
+    
+    //Methods
     private async Task Start()
     {
-        this.Logger.LogInformation("Start");
-        throw new NotImplementedException();
+        try
+        {
+            this.Logger.LogInformation("Start");
+            _isComputing = true;
+            _canSave = false;
+
+            StateHasChanged(); // Immediately update button states
+
+            await ThreadingService.Start();
+
+            // Fetch computed values
+            _oddNumbers = ThreadingService.GetOddNumbers();
+            _evenNumbers = ThreadingService.GetEvenNumbers();
+            _primeNumbers = ThreadingService.GetPrimeNumbers();
+            _totalNumbers = ThreadingService.GetTotalNumbers();
+
+            _canSave = true; // Data ready for saving
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error during computation.");
+        }
+        finally
+        {
+            _isComputing = false;
+            StateHasChanged();
+        }
     }
 
     private async Task Save()
@@ -38,5 +71,4 @@
         this.Logger.LogInformation("Save");
         throw new NotImplementedException();
     }
-
 }
