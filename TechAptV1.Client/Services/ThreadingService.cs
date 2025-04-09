@@ -14,16 +14,16 @@ public sealed class ThreadingService(ILogger<ThreadingService> logger, DataServi
     private const int ThresholdForEvenGenerator = 2_500_000;
 
     //Fields
+    private readonly object _lock = new(); //To synchronize access to shared list
+    private CancellationTokenSource _cts = new(); //To control thread execution
+
+    private readonly List<int> _sharedGlobalList = new(capacity: TotalLimit);
+
+    //Properties
     private int _oddNumbers = 0;
     private int _evenNumbers = 0;
     private int _primeNumbers = 0;
     private int _totalNumbers = 0;
-
-    private readonly object _lock = new();
-    private CancellationTokenSource _cts = new();
-    private readonly List<int> _globalNumberList = new(capacity: TotalLimit);
-
-    //Getters
     public int GetOddNumbers() => _oddNumbers;
     public int GetEvenNumbers() => _evenNumbers;
     public int GetPrimeNumbers() => _primeNumbers;
@@ -53,10 +53,10 @@ public sealed class ThreadingService(ILogger<ThreadingService> logger, DataServi
 
         lock (_lock)
         {
-            _globalNumberList.Sort();
+            _sharedGlobalList.Sort(); // Sort the list in ascending order
         }
 
-        _totalNumbers = _globalNumberList.Count;
+        _totalNumbers = _sharedGlobalList.Count;
 
         logger.LogInformation($"Summary: Total = {_totalNumbers}, Odd = {_oddNumbers}, Even = {_evenNumbers}, Prime = {_primeNumbers}");
     }
@@ -77,7 +77,7 @@ public sealed class ThreadingService(ILogger<ThreadingService> logger, DataServi
 
         while (!token.IsCancellationRequested)
         {
-            bool addedSuccessfully = TryAddNumber(() => NumberService.GenerateOdd(), ref _oddNumbers);
+            bool addedSuccessfully = TryAddNumberToSharedList(() => NumberService.GenerateOdd(), ref _oddNumbers);
             if (!addedSuccessfully) break;
         }
 
@@ -94,7 +94,7 @@ public sealed class ThreadingService(ILogger<ThreadingService> logger, DataServi
             if (NumberService.IsPrime(candidate))
             {
                 int negatedPrime = -candidate;
-                bool addedSuccessfully = TryAddNumber(() => negatedPrime, ref _primeNumbers);
+                bool addedSuccessfully = TryAddNumberToSharedList(() => negatedPrime, ref _primeNumbers);
                 if (!addedSuccessfully) break;
             }
         }
@@ -104,9 +104,9 @@ public sealed class ThreadingService(ILogger<ThreadingService> logger, DataServi
 
     private async Task MonitorAndStartEvenGenerator(CancellationToken token)
     {
-        while (_globalNumberList.Count < ThresholdForEvenGenerator)
+        while (_sharedGlobalList.Count < ThresholdForEvenGenerator)
         {
-            await Task.Delay(100);
+            await Task.Delay(100, token); // Avoid tight loop
         }
 
         logger.LogInformation("2.5 million numbers reached. Launching even number generator...");
@@ -115,24 +115,24 @@ public sealed class ThreadingService(ILogger<ThreadingService> logger, DataServi
         {
             while (!token.IsCancellationRequested)
             {
-                bool addedSuccessfully = TryAddNumber(() => NumberService.GenerateEven(), ref _evenNumbers);
+                bool addedSuccessfully = TryAddNumberToSharedList(() => NumberService.GenerateEven(), ref _evenNumbers);
                 if (!addedSuccessfully) break;
             }
 
             logger.LogInformation("Even number generator finished.");
-        });
+        }, token);
 
         _cts.Cancel();
     }
 
-    private bool TryAddNumber(Func<int> generator, ref int counter)
+    private bool TryAddNumberToSharedList(Func<int> generator, ref int counter)
     {
         lock (_lock)
         {
-            if (_globalNumberList.Count >= TotalLimit) return false;
+            if (_sharedGlobalList.Count >= TotalLimit) return false;
 
             int number = generator();
-            _globalNumberList.Add(number);
+            _sharedGlobalList.Add(number);
             Interlocked.Increment(ref counter);
             return true;
         }
@@ -144,6 +144,6 @@ public sealed class ThreadingService(ILogger<ThreadingService> logger, DataServi
         _evenNumbers = 0;
         _primeNumbers = 0;
         _totalNumbers = 0;
-        _globalNumberList.Clear();
+        _sharedGlobalList.Clear();
     }
 }
