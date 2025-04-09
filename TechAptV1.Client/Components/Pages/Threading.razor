@@ -92,6 +92,7 @@ else
             Logger.LogInformation("Save");
             _isSaving = true;
             StateHasChanged();
+            await Task.Yield();
 
             await ThreadingService.Save();
 
