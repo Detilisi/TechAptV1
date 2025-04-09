@@ -4,8 +4,8 @@
 <h3>Threading &amp; Data Persistence</h3>
 
 <div>
-    <button class="btn btn-primary" @onclick="Start" disabled="@_isComputing">Start</button>
-    <button class="btn btn-success" @onclick="Save" disabled="@( !_canSave )">Save</button>
+    <button class="btn btn-primary" @onclick="Start" disabled="@(_isComputing || _isSaving)">Start</button>
+    <button class="btn btn-success" @onclick="Save" disabled="@( !_canSave || _isComputing || _isSaving )">Save</button>
 </div>
 
 @if (_isComputing)
@@ -13,6 +13,13 @@
     <div class="mt-3 text-info d-flex align-items-center gap-2">
         <div class="spinner-border spinner-border-sm" role="status"></div>
         <span>Generating numbers, please wait...</span>
+    </div>
+}
+else if (_isSaving)
+{
+    <div class="mt-3 text-success d-flex align-items-center gap-2">
+        <div class="spinner-border spinner-border-sm" role="status"></div>
+        <span>Saving data to the database...</span>
     </div>
 }
 else
@@ -31,8 +38,8 @@ else
 }
 
 
-@code {
 
+@code {
     //Dependencies
     [Inject] public required ILogger<Threading> Logger { get; set; }
     [Inject] public required ThreadingService ThreadingService { get; set; }
@@ -45,13 +52,14 @@ else
 
     private bool _canSave = false;
     private bool _isComputing = false;
-    
+    private bool _isSaving = false;
+
     //Methods
     private async Task Start()
     {
         try
         {
-            this.Logger.LogInformation("Start");
+            Logger.LogInformation("Start");
             _isComputing = true;
             _canSave = false;
 
@@ -59,13 +67,12 @@ else
 
             await ThreadingService.Start();
 
-            // Fetch computed values
             _oddNumbers = ThreadingService.GetOddNumbers();
             _evenNumbers = ThreadingService.GetEvenNumbers();
             _primeNumbers = ThreadingService.GetPrimeNumbers();
             _totalNumbers = ThreadingService.GetTotalNumbers();
 
-            _canSave = true; // Data ready for saving
+            _canSave = true;
         }
         catch (Exception ex)
         {
@@ -80,7 +87,24 @@ else
 
     private async Task Save()
     {
-        this.Logger.LogInformation("Save");
-        throw new NotImplementedException();
+        try
+        {
+            Logger.LogInformation("Save");
+            _isSaving = true;
+            StateHasChanged();
+
+            await ThreadingService.Save();
+
+            Logger.LogInformation("Save completed.");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error while saving data.");
+        }
+        finally
+        {
+            _isSaving = false;
+            StateHasChanged();
+        }
     }
 }
