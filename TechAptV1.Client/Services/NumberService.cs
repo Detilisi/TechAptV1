@@ -1,5 +1,8 @@
 ﻿// Copyright © 2025 Always Active Technologies PTY Ltd
 
+using System.Collections.Concurrent;
+using TechAptV1.Client.Models;
+
 namespace TechAptV1.Client.Services;
 
 /// <summary>
@@ -30,6 +33,29 @@ public static class NumberService
         for (int i = 2; i <= Math.Sqrt(number); i++)
             if (number % i == 0) return false;
         return true;
+    }
+
+    public static List<Number> ConvertToNumberList(List<int> source)
+    {
+        var result = new Number[source.Count];
+
+        Parallel.ForEach(
+            Partitioner.Create(0, source.Count),
+            new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
+            range =>
+            {
+                for (int i = range.Item1; i < range.Item2; i++)
+                {
+                    int val = source[i];
+                    result[i] = new Number
+                    {
+                        Value = val,
+                        IsPrime = Convert.ToInt32(NumberService.IsPrime(val)) 
+                    };
+                }
+            });
+
+        return result.ToList();
     }
 }
 
