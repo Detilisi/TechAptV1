@@ -50,7 +50,7 @@ public static class NumberService
                     result[i] = new Number
                     {
                         Value = val,
-                        IsPrime = Convert.ToInt32(NumberService.IsPrime(val)) 
+                        IsPrime = NumberService.IsPrime(val) ? 1 : 0
                     };
                 }
             });
