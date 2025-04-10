@@ -25,7 +25,37 @@ public sealed class DataService
         this._configuration = configuration;
         this._connectionString = _configuration.GetConnectionString("Default")
                            ?? throw new InvalidOperationException("Missing DB connection string");
+
+        EnsureTableExists();
     }
+
+    /// <summary>
+    /// Ensure the SQLite Database and Table exist
+    /// </summary>
+    private void EnsureTableExists()
+    {
+        try
+        {
+            using var connection = new SqliteConnection(_connectionString);
+            connection.Open();
+
+            using var command = connection.CreateCommand();
+            command.CommandText = @"
+            CREATE TABLE IF NOT EXISTS Number (
+                Value INTEGER NOT NULL,
+                IsPrime INTEGER NOT NULL DEFAULT 0
+            );";
+
+            command.ExecuteNonQuery();
+            _logger.LogInformation("Ensured 'Number' table exists.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to ensure the 'Number' table exists.");
+            throw;
+        }
+    }
+
 
     /// <summary>
     /// Save the list of data to the SQLite Database
