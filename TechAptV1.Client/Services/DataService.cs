@@ -143,4 +143,21 @@ public sealed class DataService
 
         return result;
     }
+
+    /// <summary>
+    /// Empty the Number Database
+    /// </summary>
+    /// <returns></returns>
+    public async Task DeleteAllAsync()
+    {
+        using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync();
+
+        using var command = connection.CreateCommand();
+        command.CommandText = "DELETE FROM Number";
+
+        await command.ExecuteNonQueryAsync();
+        _logger.LogInformation("Deleted all records.");
+    }
+
 }
