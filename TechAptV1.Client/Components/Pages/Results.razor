@@ -12,19 +12,19 @@
 <div>
     <table class="table">
         <thead>
-        <tr>
-            <th>Value</th>
-            <th>IsPrime</th>
-        </tr>
+            <tr>
+                <th>Value</th>
+                <th>IsPrime</th>
+            </tr>
         </thead>
         <tbody>
-        @foreach (var item in this.numbers)
-        {
-            <tr>
-                <td>@item.Value</td>
-                <td>@item.IsPrime</td>
-            </tr>
-        }
+            @foreach (var item in this.numbers)
+            {
+                <tr>
+                    <td>@item.Value</td>
+                    <td>@item.IsPrime</td>
+                </tr>
+            }
         </tbody>
     </table>
 </div>
@@ -32,8 +32,20 @@
 @code {
 
     [Inject] public required ILogger<Threading> Logger { get; set; }
+    [Inject] public required DataService DataService { get; set; }
 
-    private List<Number> numbers = new ();
+    private List<Number> numbers = new();
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+
+        var data = this.DataService.Get(20);
+        if (data != null)
+        {
+            this.numbers = data.ToList();
+        }
+    }
 
     /// <summary>
     /// Fetches all the records, serializes them to XML and downloads the file
