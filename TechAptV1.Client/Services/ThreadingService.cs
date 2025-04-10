@@ -1,5 +1,6 @@
 ﻿// Copyright © 2025 Always Active Technologies PTY Ltd
 
+using System.Collections.Concurrent;
 using TechAptV1.Client.Models;
 
 namespace TechAptV1.Client.Services;
@@ -71,20 +72,14 @@ public sealed class ThreadingService(ILogger<ThreadingService> logger, DataServi
         logger.LogInformation("Save");
 
         List<Number> numberList;
-
         lock (_lock)
         {
-            numberList = _sharedGlobalList
-                .AsParallel()
-                .Select(n => new Number
-                {
-                    Value = n,
-                    IsPrime = NumberService.IsPrime(n) ? 0 : 1
-                })
-                .ToList();
+            numberList = NumberService.ConvertToNumberList(_sharedGlobalList);
         }
 
         await dataService.Save(numberList);
+
+        logger.LogInformation("Save completed");
     }
 
     //Helper methods
