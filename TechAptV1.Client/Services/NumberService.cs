@@ -15,7 +15,7 @@ public static class NumberService
     public static int GenerateOdd() => Random.Shared.Next(0, 5_000_000) * 2 + 1;
     public static int GenerateRandomPrime()
     {
-        const int maxAttempts = 1000;
+        const int maxAttempts = 10_000;
         for (int attempts = 0; attempts < maxAttempts; attempts++)
         {
             int randomNumber = GenerateRandom();
@@ -52,7 +52,7 @@ public static class NumberService
                     result[i] = new Number
                     {
                         Value = val,
-                        IsPrime = NumberService.IsPrime(val) ? 1 : 0
+                        IsPrime = IsPrime(val) ? 1 : 0
                     };
                 }
             });
