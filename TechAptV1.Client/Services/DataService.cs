@@ -101,7 +101,7 @@ public sealed class DataService
     /// </summary>
     /// <param name="count"></param>
     /// <returns></returns>
-    public IEnumerable<Number> Get(int count)
+    public async Task<IEnumerable<Number>> Get(int count)
     {
         try
         {
@@ -109,13 +109,13 @@ public sealed class DataService
             var result = new List<Number>();
 
             using var connection = new SqliteConnection(_connectionString);
-            connection.Open();
+            await connection.OpenAsync();
 
             using var command = connection.CreateCommand();
             command.CommandText = "SELECT Value, IsPrime FROM Number LIMIT @count";
             command.Parameters.AddWithValue("@count", count);
 
-            using var reader = command.ExecuteReader();
+            using var reader = await command.ExecuteReaderAsync();
             while (reader.Read())
             {
                 result.Add(new Number
@@ -138,7 +138,7 @@ public sealed class DataService
     /// Fetch All the records from the SQLite Database
     /// </summary>
     /// <returns></returns>
-    public IEnumerable<Number> GetAll()
+    public async Task<IEnumerable<Number>> GetAll()
     {
         try
         {
@@ -146,12 +146,12 @@ public sealed class DataService
             var result = new List<Number>();
 
             using var connection = new SqliteConnection(_connectionString);
-            connection.Open();
+            await connection.OpenAsync();
 
             using var command = connection.CreateCommand();
             command.CommandText = "SELECT Value, IsPrime FROM Number";
 
-            using var reader = command.ExecuteReader();
+            using var reader = await command.ExecuteReaderAsync();
             while (reader.Read())
             {
                 result.Add(new Number
