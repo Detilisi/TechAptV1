@@ -7,45 +7,92 @@
 <h3>Results</h3>
 <p>The table shows the top N numbers generated. The download XML and Binary feature allows you to download the entire data set</p>
 
-<div>
-    <button class="btn btn-primary" @onclick="(async () => await this.DownloadXml())">Download XML</button>
-    <button class="btn btn-primary" @onclick="(async () => await this.DownloadBinary())">Download Binary</button>
-</div>
-<div>
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Value</th>
-                <th>IsPrime</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var item in this.numbers)
-            {
+@if (_isBusy)
+{
+    <div class="mt-3 text-success d-flex align-items-center gap-2">
+        <div class="spinner-border spinner-border-sm" role="status"></div>
+        <span>Processing, please wait...</span>
+    </div>
+}
+else
+{
+    <div>
+        <button class="btn btn-primary" @onclick="(async () => await this.DownloadXml())">Download XML</button>
+        <button class="btn btn-primary" @onclick="(async () => await this.DownloadBinary())">Download Binary</button>
+    </div>
+    <div>
+        <table class="table">
+            <thead>
                 <tr>
-                    <td>@item.Value</td>
-                    <td>@item.IsPrime</td>
+                    <th>Value</th>
+                    <th>IsPrime</th>
                 </tr>
-            }
-        </tbody>
-    </table>
-</div>
+            </thead>
+            <tbody>
+                @foreach (var item in this._top20Numbers)
+                {
+                    <tr>
+                        <td>@item.Value</td>
+                        <td>@item.IsPrime</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
 
 @code {
 
+    //Dependencies
     [Inject] public required ILogger<Threading> Logger { get; set; }
     [Inject] public required DataService DataService { get; set; }
 
-    private List<Number> numbers = new();
+    //State
+    private List<Number> _allNumbers = new();
+    private List<Number> _top20Numbers = new();
 
-    protected override void OnParametersSet()
+    private bool _isBusy = false;
+
+    //Initilaization
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        base.OnParametersSet();
+        await base.OnAfterRenderAsync(firstRender);
 
-        var data = this.DataService.Get(20);
-        if (data != null)
+        if (!firstRender) return;
+        Logger.LogInformation("OnAfterRenderAsync");
+
+        try
         {
-            this.numbers = data.ToList();
+            if (_isBusy) return;
+            _isBusy = true;
+            StateHasChanged();
+
+            this.Logger.LogInformation("Fetching data from the database");
+
+            // Fetch the top 20 numbers from the database
+            var data = await this.DataService.Get(20);
+            if (data != null)
+            {
+                _top20Numbers = data.ToList();
+                StateHasChanged();
+            }
+            Logger.LogInformation("Fetched {Count} records", _top20Numbers.Count);
+
+            // Fetch all numbers from the database
+            var allData = await this.DataService.GetAll();
+            if (allData != null)
+            {
+                _allNumbers = allData.ToList();
+                StateHasChanged();
+            }
+            Logger.LogInformation("Fetched {Count} records", _allNumbers.Count);
+
+        }
+        finally
+        {
+            _isBusy = false;
+            StateHasChanged();
         }
     }
 
@@ -54,12 +101,29 @@
     /// </summary>
     private async Task DownloadXml()
     {
-        this.Logger.LogInformation("DownloadXml");
-        XmlSerializer serializer = new XmlSerializer(typeof(List<Number>));
-        using var stringWriter = new StringWriter();
-        serializer.Serialize(stringWriter, numbers);
-        var xmlContent = stringWriter.ToString();
-        await JS.InvokeVoidAsync("downloadFile", "numbers.xml", "application/xml", xmlContent);
+        try
+        {
+            if (_isBusy) return;
+            _isBusy = true;
+            StateHasChanged();
+
+            this.Logger.LogInformation("DownloadXml");
+            XmlSerializer serializer = new XmlSerializer(typeof(List<Number>));
+            using var stringWriter = new StringWriter();
+            serializer.Serialize(stringWriter, _allNumbers);
+            var xmlContent = stringWriter.ToString();
+            await JS.InvokeVoidAsync("downloadFile", "numbers.xml", "application/xml", xmlContent);
+        }
+        catch (Exception ex)
+        {
+            this.Logger.LogError(ex, "Error downloading XML");
+        }
+        finally
+        {
+            _isBusy = false;
+            StateHasChanged();
+        }
+
     }
 
     /// <summary>
@@ -67,16 +131,32 @@
     /// </summary>
     private async Task DownloadBinary()
     {
-        this.Logger.LogInformation("DownloadBinary");
-
-        using var memoryStream = new MemoryStream();
-        using var writer = new BinaryWriter(memoryStream);
-        foreach (var record in numbers)
+        try
         {
-            writer.Write(record.Value);
-            writer.Write(record.Value);
+            if (_isBusy) return;
+            _isBusy = true;
+            StateHasChanged();
+
+            this.Logger.LogInformation("DownloadBinary");
+
+            using var memoryStream = new MemoryStream();
+            using var writer = new BinaryWriter(memoryStream);
+            foreach (var record in _allNumbers)
+            {
+                writer.Write(record.Value);
+                writer.Write(record.Value);
+            }
+            var binaryContent = memoryStream.ToArray();
+            await JS.InvokeVoidAsync("downloadFile", "numbers.bin", "application/octet-stream", binaryContent);
         }
-        var binaryContent = memoryStream.ToArray();
-        await JS.InvokeVoidAsync("downloadFile", "numbers.bin", "application/octet-stream", binaryContent);
+        catch (Exception ex)
+        {
+            this.Logger.LogError(ex, "Error downloading Binary");
+        }
+        finally
+        {
+            _isBusy = false;
+            StateHasChanged();
+        }
     }
 }
