@@ -18,3 +18,25 @@
 </body>
 
 </html>
+
+<script>
+    function downloadFile(fileName, contentType, content) {
+        const link = document.createElement('a');
+        link.download = fileName;
+        link.href = 'data:' + contentType + ';base64,' + btoa(content);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    function downloadFileFromStream(fileName, contentType, contentStreamReference) {
+        const url = URL.createObjectURL(contentStreamReference);
+        const anchorElement = document.createElement('a');
+        anchorElement.href = url;
+        anchorElement.download = fileName;
+        document.body.appendChild(anchorElement);
+        anchorElement.click();
+        document.body.removeChild(anchorElement);
+        URL.revokeObjectURL(url);
+    }
+</script>
