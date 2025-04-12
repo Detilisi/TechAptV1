@@ -1,7 +1,6 @@
 ﻿// Copyright © 2025 Always Active Technologies PTY Ltd
 
 using System.Collections.Concurrent;
-using System.Security.Cryptography;
 using TechAptV1.Client.Models;
 
 namespace TechAptV1.Client.Services;
