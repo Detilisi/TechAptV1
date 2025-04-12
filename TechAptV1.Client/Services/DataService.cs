@@ -66,7 +66,7 @@ public sealed class DataService
     {
         try
         {
-            _logger.LogInformation("Save");
+            _logger.LogInformation("Saving to Number database table...");
             using var connection = new SqliteConnection(_connectionString);
             await connection.OpenAsync();
 
@@ -91,7 +91,7 @@ public sealed class DataService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to ensure the 'Number' table exists.");
+            _logger.LogError(ex, "Failed to insert data into Number table.");
             throw;
         }
     }
