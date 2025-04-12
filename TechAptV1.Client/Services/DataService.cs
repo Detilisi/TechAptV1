@@ -1,5 +1,6 @@
 ﻿// Copyright © 2025 Always Active Technologies PTY Ltd
 
+using System.Text;
 using Microsoft.Data.Sqlite;
 using TechAptV1.Client.Models;
 
@@ -21,9 +22,9 @@ public sealed class DataService
     /// <param name="configuration"></param>
     public DataService(ILogger<DataService> logger, IConfiguration configuration)
     {
-        this._logger = logger;
-        this._configuration = configuration;
-        this._connectionString = _configuration.GetConnectionString("Default")
+        _logger = logger;
+        _configuration = configuration;
+        _connectionString = _configuration.GetConnectionString("Default")
                            ?? throw new InvalidOperationException("Missing DB connection string");
 
         EnsureTableExists();
@@ -63,27 +64,36 @@ public sealed class DataService
     /// <param name="dataList"></param>
     public async Task Save(List<Number> dataList)
     {
-        this._logger.LogInformation("Save");
-        using var connection = new SqliteConnection(_connectionString);
-        await connection.OpenAsync();
-
-        using var transaction = connection.BeginTransaction();
-        var command = connection.CreateCommand();
-
-        command.CommandText = "INSERT INTO Number (Value, IsPrime) VALUES (@value, @isPrime)";
-
-        foreach (var number in dataList)
+        try
         {
-            command.Parameters.Clear();
-            command.Parameters.AddWithValue("@value", number.Value);
-            command.Parameters.AddWithValue("@isPrime", number.IsPrime);
+            _logger.LogInformation("Save");
+            using var connection = new SqliteConnection(_connectionString);
+            await connection.OpenAsync();
+
+            using var transaction = connection.BeginTransaction();
+            
+            var valuesList = new List<string>();
+            var sqlBuilder = new StringBuilder("INSERT INTO Number (Value, IsPrime) VALUES ");
+            foreach (var number in dataList)
+            {
+                valuesList.Add($"({number.Value}, {number.IsPrime})");
+            }
+
+            sqlBuilder.Append(string.Join(",", valuesList));
+
+            SqliteCommand command = connection.CreateCommand();
+            command.CommandText = sqlBuilder.ToString();
             await command.ExecuteNonQueryAsync();
+
+            await transaction.CommitAsync();
+
+            _logger.LogInformation($"Saved {dataList.Count} numbers.");
         }
-
-        await transaction.CommitAsync();
-
-        _logger.LogInformation($"Saved {dataList.Count} numbers.");
-
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to ensure the 'Number' table exists.");
+            throw;
+        }
     }
 
     /// <summary>
