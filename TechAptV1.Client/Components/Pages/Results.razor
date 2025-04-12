@@ -1,6 +1,8 @@
 ﻿@page "/results"
+@using System.Xml.Serialization
 @using TechAptV1.Client.Models
 @using TechAptV1.Client.Services
+@inject IJSRuntime JS
 
 <h3>Results</h3>
 <p>The table shows the top N numbers generated. The download XML and Binary feature allows you to download the entire data set</p>
@@ -53,7 +55,11 @@
     private async Task DownloadXml()
     {
         this.Logger.LogInformation("DownloadXml");
-        throw new NotImplementedException();
+        XmlSerializer serializer = new XmlSerializer(typeof(List<Number>));
+        using var stringWriter = new StringWriter();
+        serializer.Serialize(stringWriter, numbers);
+        var xmlContent = stringWriter.ToString();
+        await JS.InvokeVoidAsync("downloadFile", "numbers.xml", "application/xml", xmlContent);
     }
 
     /// <summary>
@@ -62,7 +68,15 @@
     private async Task DownloadBinary()
     {
         this.Logger.LogInformation("DownloadBinary");
-        throw new NotImplementedException();
-    }
 
+        using var memoryStream = new MemoryStream();
+        using var writer = new BinaryWriter(memoryStream);
+        foreach (var record in numbers)
+        {
+            writer.Write(record.Value);
+            writer.Write(record.Value);
+        }
+        var binaryContent = memoryStream.ToArray();
+        await JS.InvokeVoidAsync("downloadFile", "numbers.bin", "application/octet-stream", binaryContent);
+    }
 }
