@@ -1,5 +1,6 @@
 ﻿@page "/results"
 @using System.Xml.Serialization
+@using System.Text
 @using TechAptV1.Client.Models
 @using TechAptV1.Client.Services
 @inject IJSRuntime JS
@@ -118,7 +119,8 @@ else
                 return stringWriter.ToString();
             });
 
-            await JS.InvokeVoidAsync("downloadFile", "numbers.xml", "application/xml", xmlContent);
+            var byteArray = Encoding.UTF8.GetBytes(xmlContent);
+            await JS.InvokeVoidAsync("downloadFileFromByteArray", "numbers.xml", "application/xml", byteArray);
         }
         catch (Exception ex)
         {
