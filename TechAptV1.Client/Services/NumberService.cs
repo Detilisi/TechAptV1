@@ -10,28 +10,19 @@ namespace TechAptV1.Client.Services;
 /// </summary>
 public static class NumberService
 {
-    private static readonly Random _random = new();
-
-    public static int GenerateOdd()
-    {
-        return _random.Next(1, int.MaxValue) | 1; // force odd
-    }
-
-    public static int GenerateEven()
-    {
-        return _random.Next(1, int.MaxValue) & ~1; // force even
-    }
-
-    public static int GenerateRandom()
-    {
-        return _random.Next(1, int.MaxValue);
-    }
-
+    private static readonly Random _random = new Random();
+    public static int GenerateOdd() => _random.Next(0, 5_000_000) * 2 + 1;
+    public static int GenerateEven() => _random.Next(0, 5_000_000) * 2;
+    public static int GenerateRandom() => _random.Next(1, 10_000_000); // Example range
     public static bool IsPrime(int number)
     {
-        if (number < 2) return false;
-        for (int i = 2; i <= Math.Sqrt(number); i++)
-            if (number % i == 0) return false;
+        if (number <= 1) return false;
+        if (number <= 3) return true;
+        if (number % 2 == 0 || number % 3 == 0) return false;
+        for (int i = 5; i * i <= number; i = i + 6)
+        {
+            if (number % i == 0 || number % (i + 2) == 0) return false;
+        }
         return true;
     }
 
