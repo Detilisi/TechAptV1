@@ -103,27 +103,35 @@ public sealed class DataService
     /// <returns></returns>
     public IEnumerable<Number> Get(int count)
     {
-        this._logger.LogInformation("Get");
-        var result = new List<Number>();
-
-        using var connection = new SqliteConnection(_connectionString);
-        connection.Open();
-
-        using var command = connection.CreateCommand();
-        command.CommandText = "SELECT Value, IsPrime FROM Number LIMIT @count";
-        command.Parameters.AddWithValue("@count", count);
-
-        using var reader = command.ExecuteReader();
-        while (reader.Read())
+        try
         {
-            result.Add(new Number
-            {
-                Value = reader.GetInt32(0),
-                IsPrime = reader.GetInt32(1)
-            });
-        }
+            _logger.LogInformation($"Getting {count} records from Number Table..");
+            var result = new List<Number>();
 
-        return result;
+            using var connection = new SqliteConnection(_connectionString);
+            connection.Open();
+
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT Value, IsPrime FROM Number LIMIT @count";
+            command.Parameters.AddWithValue("@count", count);
+
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                result.Add(new Number
+                {
+                    Value = reader.GetInt32(0),
+                    IsPrime = reader.GetInt32(1)
+                });
+            }
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to fetch data from Number table.");
+            throw;
+        }   
     }
 
     /// <summary>
@@ -132,26 +140,34 @@ public sealed class DataService
     /// <returns></returns>
     public IEnumerable<Number> GetAll()
     {
-        this._logger.LogInformation("GetAll");
-        var result = new List<Number>();
-
-        using var connection = new SqliteConnection(_connectionString);
-        connection.Open();
-
-        using var command = connection.CreateCommand();
-        command.CommandText = "SELECT Value, IsPrime FROM Number";
-
-        using var reader = command.ExecuteReader();
-        while (reader.Read())
+        try
         {
-            result.Add(new Number
-            {
-                Value = reader.GetInt32(0),
-                IsPrime = reader.GetInt32(1)
-            });
-        }
+            _logger.LogInformation("GetAll");
+            var result = new List<Number>();
 
-        return result;
+            using var connection = new SqliteConnection(_connectionString);
+            connection.Open();
+
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT Value, IsPrime FROM Number";
+
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                result.Add(new Number
+                {
+                    Value = reader.GetInt32(0),
+                    IsPrime = reader.GetInt32(1)
+                });
+            }
+
+            return result;
+        }
+        catch
+        {
+            _logger.LogError("Failed to fetch all data from Number table.");
+            throw;
+        }
     }
 
     /// <summary>
@@ -160,14 +176,22 @@ public sealed class DataService
     /// <returns></returns>
     public async Task DeleteAllAsync()
     {
-        using var connection = new SqliteConnection(_connectionString);
-        await connection.OpenAsync();
+        try
+        {
+            using var connection = new SqliteConnection(_connectionString);
+            await connection.OpenAsync();
 
-        using var command = connection.CreateCommand();
-        command.CommandText = "DELETE FROM Number";
+            using var command = connection.CreateCommand();
+            command.CommandText = "DELETE FROM Number";
 
-        await command.ExecuteNonQueryAsync();
-        _logger.LogInformation("Deleted all records.");
+            await command.ExecuteNonQueryAsync();
+            _logger.LogInformation("Deleted all records.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to delete all records from Number table.");
+            throw;
+        }
+        
     }
-
 }
