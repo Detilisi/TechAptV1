@@ -1,92 +1,144 @@
+## **Technical Aptitude Assessment – Cover Letter**  
+### **Submitted by: Bongani Detilisi**
 
-# **Technical Aptitude Assessment**
-
-## **Evaluation Criteria**
-Your submission will be scored based on the following:
-1. **Object-Oriented Programming Principles** (Microsoft Standards)
-2. **Coding Principles:** SOLID, DRY, KISS, Anti-Patterns, YAGNI
-3. **Naming Conventions & Coding Standards** (Microsoft Standards)
-4. Does your code compile out of the box?
-5. Does your submission run out of the box?
-6. Did we need to fix bugs before reviewing your code?
-7. Were nuances around your submission documented?
-8. Did you complete all tasks in the assessment?
-
-## **Environment**
-We will run your submission on a **vanilla install of Visual Studio 2022 Community Edition**.
-
-### **Tech Stack Requirements**
-- **Framework:** Microsoft .NET 8
-- **Language:** C#
-- **Project Type:** Blazor Server
-- **Storage:** SQLite
-- **Source Control:** Git
-
-### **Submission Instructions**
-1. Fork our repository to your Git account.
-2. Complete the assessment on your forked repo.
-3. Submit your work via a pull request or provide access to a public repository.
+**Introduction**  
+I am pleased to submit my completed Technical Aptitude Assessment for your review. This document outlines my approach, design considerations, and rationale behind the key implementation decisions made during the development process.
 
 ---
 
-## **Task 1: Threading & Data Persistence**
+**Overview of Approach**  
+The solution was developed using **.NET 8**, **Blazor Server**, and **SQLite**, adhering strictly to the provided requirements. It is cleanly structured and builds successfully out of the box, requiring no additional configuration beyond a standard Visual Studio 2022 Community Edition setup.
 
-### **Boilerplate Code**
-- `TechAptV1.Client/Components/Pages/Threading.razor`
-- `TechAptV1.Client/Services/ThreadingService.cs`
-- `TechAptV1.Client/Services/DataService.cs`
-- `TechAptV1.Client/Models/Number.cs`
+The solution is divided into two main functional areas:
 
-### **Required Functionality**
-
-#### **1. Threading.razor – Data Computation UI**
-- **Start Button:**
-  - Start the data computation process while adhering to UI best practices.
-  - Disable the Start button during computation.
-  - Enable the Save button only if computation is completed and data is available to save.
-- **Save Button:**
-  - Save the computed data to an SQLite database.
-
-#### **2. ThreadingService.cs – Compute Data (Business Logic Requirements)**
-- Create a thread to randomly pick **odd numbers** and add them to a shared global variable.
-- Create a second thread to calculate **prime numbers**, negate them, and add them to the shared global variable.
-- Once the shared global variable contains **2,500,000** entries:
-  - Create a third thread to pick **even numbers** and add them to the shared global variable.
-- Stop all threads when the shared global variable contains exactly **10,000,000** entries.
-- Sort the global list in ascending order.
-- Display the total count of numbers, odd numbers, and even numbers.
-- Retain a handle on the list for user access and saving.
-- The shared global variable must not exceed **10,000,000** entries.
-
-#### **3. DataService.cs – Save Data (Persistence Requirements)**
-- SQLite table structure:
-  ```sql
-  CREATE TABLE "Number" (
-      "Value" INTEGER NOT NULL,
-      "IsPrime" INTEGER NOT NULL DEFAULT 0
-  );
-  ```
-- Efficiently insert the global list into the SQLite table.
+1. **Task 1: Threading & Data Persistence**  
+2. **Task 2: Results & Data Retrieval**
 
 ---
 
-## **Task 2: Results & Data Retrieval**
+### **Task 1: Threading & Data Persistence**
 
-### **Boilerplate Code**
-- `TechAptV1.Client/Components/Pages/Results.razor`
-- `TechAptV1.Client/Services/DataService.cs`
-- `TechAptV1.Client/Models/Number.cs`
+#### **Design Approach**  
+The core functionality was implemented in the `ThreadingService`. Early in the design phase, I identified two primary concerns: data generation and thread management. To adhere to the **Single Responsibility Principle**, I separated number generation into a utility class called `NumberService`.
 
-### **Required Functionality**
+---
 
-#### **1. Results.razor – Data Computation Results UI**
-- **Display Table:**
-  - Show the top 20 results from the saved data generated in Task 1.
-- **DownloadXml Button:**
-  - Retrieve all records from the `Number` table.
-  - Serialize the records to XML.
-  - Provide the XML file for download.
-- **DownloadBinary Button:**
-  - Retrieve all records from the `Number` table.
-  - Serialize the record columns to a binary format (`.bin`).
-  - Provide the binary file for download.
+#### **NumberService Implementation**  
+The `NumberService` was implemented as a static utility class, responsible for:
+
+- Generating random numbers (general, odd, even, and prime)
+- Efficiently checking for prime numbers
+- Converting integers to `Number` objects with prime status using parallel processing
+
+This separation allowed `ThreadingService` to remain focused on thread coordination while keeping number generation logic modular and reusable.
+
+---
+
+#### **ThreadingService Implementation**  
+With number generation delegated, the `ThreadingService` handled:
+
+- Managing multiple threads to populate a shared global list
+- Ensuring thread-safe access to shared resources
+- Monitoring the list size to trigger even number generation at the 2.5 million mark
+- Coordinating graceful shutdown of threads at the 10 million limit
+- Sorting the final list and tracking statistics (odd, even, prime)
+
+##### **Thread Synchronization Techniques:**
+
+- Used a dedicated lock object (`_listLock`) for synchronized access  
+- Leveraged `Interlocked.Increment()` for thread-safe counter updates  
+- Centralized list updates via `TryAddNumberToSharedList()`  
+
+##### **Thread Management:**
+
+- **Odd number generator** – active from the start  
+- **Negated prime generator** – active from the start  
+- **Even number generator** – activated at 2.5 million count via a monitoring thread  
+- All threads coordinated and shut down using a `CancellationTokenSource`  
+
+---
+
+#### **UI Implementation – Threading.razor**
+
+- Clean interface to trigger computation  
+- Real-time statistics display (odd, even, prime counts)  
+- Async operations for UI responsiveness  
+- Button state management and visual feedback during processing  
+
+---
+
+#### **Data Persistence**
+
+Efficiently saved generated numbers to SQLite by:
+
+- Implementing automatic table creation for plug-and-play functionality  
+- Using parameterized queries to prevent SQL injection  
+- Batching inserts to reduce database roundtrips  
+- Using transactions to ensure atomicity and consistency  
+- Adding structured error handling and logging  
+
+---
+
+### **Task 2: Results & Data Retrieval**
+
+#### **Design Approach**
+
+This phase focused on efficiently retrieving large datasets and enabling full dataset export without affecting UI responsiveness.
+
+#### **Optimization Strategy**
+
+Initially, loading all data prior to serialization caused UI blocking. To improve performance:
+
+- **Two-step data retrieval**:  
+  1. Load top 20 records for immediate display  
+  2. Load full dataset asynchronously in the background  
+
+- **Memory & UI Management**:  
+  - Used async database operations to avoid blocking  
+  - Maintained UI state flags to indicate loading progress  
+  - Provided visual indicators to inform users during background operations  
+
+---
+
+#### **Export Functionality Implementation**
+
+##### **XML Export**
+
+- Used `XmlSerializer` for serialization  
+- Offloaded work to a background thread with `Task.Run()`  
+- Optimized string handling for memory efficiency  
+- Triggered download via JavaScript interop without server roundtrips  
+
+##### **Binary Export**
+
+- Implemented custom binary serialization using `BinaryWriter`  
+- Streamed data via `MemoryStream` to reduce memory overhead  
+- Used JavaScript interop for client-side file downloads  
+
+---
+
+#### **UI Implementation – Results.razor**
+
+- Displayed top 20 records in a clean, tabular format  
+- Provided intuitive controls for XML and binary download  
+- Included loading indicators and disabled buttons during active operations  
+- Implemented graceful error handling and logging mechanisms  
+
+---
+
+#### **Performance Considerations**
+
+- Used parameter binding for efficient database queries  
+- Managed database connections properly to avoid resource leaks  
+- Tracked UI state to avoid redundant database calls  
+- Ensured UI responsiveness with consistent async/await patterns  
+
+---
+
+**Closing Remarks**  
+This assessment was both challenging and rewarding, reflecting the kind of performance-focused, data-driven work I thoroughly enjoy. I hope my submission demonstrates both my technical competence and commitment to writing high-quality, maintainable, and performant code.
+
+I look forward to the opportunity to discuss my approach in more detail.
+
+**Kind regards,**  
+**Bongani Detilisi**
