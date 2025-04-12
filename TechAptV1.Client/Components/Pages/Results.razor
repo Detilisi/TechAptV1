@@ -124,7 +124,6 @@ else
             _isBusy = false;
             StateHasChanged();
         }
-
     }
 
     /// <summary>
@@ -140,14 +139,18 @@ else
 
             this.Logger.LogInformation("DownloadBinary");
 
-            using var memoryStream = new MemoryStream();
-            using var writer = new BinaryWriter(memoryStream);
-            foreach (var record in _allNumbers)
+            var binaryContent = await Task.Run(() =>
             {
-                writer.Write(record.Value);
-                writer.Write(record.IsPrime);
-            }
-            var binaryContent = memoryStream.ToArray();
+                using var memoryStream = new MemoryStream();
+                using var writer = new BinaryWriter(memoryStream);
+                foreach (var record in _allNumbers)
+                {
+                    writer.Write(record.Value);
+                    writer.Write(record.IsPrime);
+                }
+                return memoryStream.ToArray();
+            });
+
             await JS.InvokeVoidAsync("downloadFile", "numbers.bin", "application/octet-stream", binaryContent);
         }
         catch (Exception ex)
