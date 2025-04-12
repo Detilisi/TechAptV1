@@ -109,10 +109,15 @@ else
             StateHasChanged();
 
             this.Logger.LogInformation("DownloadXml");
-            XmlSerializer serializer = new XmlSerializer(typeof(List<Number>));
-            using var stringWriter = new StringWriter();
-            serializer.Serialize(stringWriter, _allNumbers);
-            var xmlContent = stringWriter.ToString();
+
+            var xmlContent = await Task.Run(() =>
+            {
+                XmlSerializer serializer = new XmlSerializer(typeof(List<Number>));
+                using var stringWriter = new StringWriter();
+                serializer.Serialize(stringWriter, _allNumbers);
+                return stringWriter.ToString();
+            });
+
             await JS.InvokeVoidAsync("downloadFile", "numbers.xml", "application/xml", xmlContent);
         }
         catch (Exception ex)
