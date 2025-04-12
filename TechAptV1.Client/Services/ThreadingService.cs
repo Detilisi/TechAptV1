@@ -17,7 +17,7 @@ public sealed class ThreadingService(ILogger<ThreadingService> logger, DataServi
     private const int ThresholdForEvenGenerator = 2_500_000;
 
     //Fields
-    private readonly object _lock = new(); //To synchronize access to shared list
+    private readonly object _listLock = new(); //To synchronize access to shared list
     private CancellationTokenSource _cts = new(); //To control thread execution
 
     private readonly List<int> _sharedGlobalList = new(capacity: TotalLimit);
@@ -38,7 +38,7 @@ public sealed class ThreadingService(ILogger<ThreadingService> logger, DataServi
     /// </summary>
     public async Task Start()
     {
-        logger.LogInformation("Start");
+        logger.LogInformation("Starting number generation process...");
 
         ResetState();
         _cts = new CancellationTokenSource();
@@ -54,13 +54,14 @@ public sealed class ThreadingService(ILogger<ThreadingService> logger, DataServi
 
         logger.LogInformation("All threads have finished. Sorting the final list...");
 
-        lock (_lock)
+        lock (_listLock)
         {
             _sharedGlobalList.Sort(); // Sort the list in ascending order
         }
 
         _totalNumbers = _sharedGlobalList.Count;
 
+        logger.LogInformation("Number generation Complete.");
         logger.LogInformation($"Summary: Total = {_totalNumbers}, Odd = {_oddNumbers}, Even = {_evenNumbers}, Prime = {_primeNumbers}");
     }
 
@@ -69,15 +70,30 @@ public sealed class ThreadingService(ILogger<ThreadingService> logger, DataServi
     /// </summary>
     public async Task Save()
     {
-        logger.LogInformation("Save");
+        logger.LogInformation("Initiating save operation...");
 
-        List<Number> numberList;
-        lock (_lock)
+        List<Number> numberListCopy;
+
+        try
         {
-            numberList = NumberService.ConvertToNumberList(_sharedGlobalList);
-        }
+            lock (_listLock)
+            {
+                if (_sharedGlobalList == null || _sharedGlobalList.Count == 0)
+                {
+                    logger.LogWarning("Save operation skipped: No numbers generated or list is empty.");
+                    return;
+                }
+                numberListCopy = NumberService.ConvertToNumberList(_sharedGlobalList);
+            }
 
-        await dataService.Save(numberList);
+            logger.LogDebug("Calling dataService.Save...");
+            await dataService.Save(numberListCopy);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to copy or convert the shared list for saving.");
+            throw; // Re-throw as saving cannot proceed
+        }
 
         logger.LogInformation("Save completed");
     }
@@ -102,13 +118,10 @@ public sealed class ThreadingService(ILogger<ThreadingService> logger, DataServi
 
         while (!token.IsCancellationRequested)
         {
-            int candidate = NumberService.GenerateRandom();
-            if (NumberService.IsPrime(candidate))
-            {
-                int negatedPrime = -candidate;
-                bool addedSuccessfully = TryAddNumberToSharedList(() => negatedPrime, ref _primeNumbers);
-                if (!addedSuccessfully) break;
-            }
+
+            int negatedPrime = -NumberService.GenerateRandomPrime();
+            bool addedSuccessfully = TryAddNumberToSharedList(() => negatedPrime, ref _primeNumbers);
+            if (!addedSuccessfully) break;
         }
 
         logger.LogInformation("Prime number generator stopped.");
@@ -139,7 +152,7 @@ public sealed class ThreadingService(ILogger<ThreadingService> logger, DataServi
 
     private bool TryAddNumberToSharedList(Func<int> generator, ref int counter)
     {
-        lock (_lock)
+        lock (_listLock)
         {
             if (_sharedGlobalList.Count >= TotalLimit) return false;
 
