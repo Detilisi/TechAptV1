@@ -1,6 +1,7 @@
 ﻿// Copyright © 2025 Always Active Technologies PTY Ltd
 
 using System.Collections.Concurrent;
+using System.Security.Cryptography;
 using TechAptV1.Client.Models;
 
 namespace TechAptV1.Client.Services;
@@ -10,10 +11,21 @@ namespace TechAptV1.Client.Services;
 /// </summary>
 public static class NumberService
 {
-    private static readonly Random _random = new Random();
-    public static int GenerateOdd() => _random.Next(0, 5_000_000) * 2 + 1;
-    public static int GenerateEven() => _random.Next(0, 5_000_000) * 2;
-    public static int GenerateRandom() => _random.Next(1, 10_000_000); // Example range
+    public static int GenerateRandom() => Random.Shared.Next(1, 10_000_000);
+    public static int GenerateEven() => Random.Shared.Next(0, 5_000_000) * 2;
+    public static int GenerateOdd() => Random.Shared.Next(0, 5_000_000) * 2 + 1;
+    public static int GenerateRandomPrime()
+    {
+        const int maxAttempts = 1000;
+        for (int attempts = 0; attempts < maxAttempts; attempts++)
+        {
+            int randomNumber = GenerateRandom();
+            if (IsPrime(randomNumber)) return randomNumber;
+        }
+
+        return 2; // Fallback to 2 if no prime found within attempts
+    }
+
     public static bool IsPrime(int number)
     {
         if (number <= 1) return false;
