@@ -17,8 +17,9 @@
 else
 {
     <div>
-        <button class="btn btn-primary" @onclick="(async () => await this.DownloadXml())">Download XML</button>
-        <button class="btn btn-primary" @onclick="(async () => await this.DownloadBinary())">Download Binary</button>
+        <button class="btn btn-primary" @onclick="DownloadXml" disabled="@_isBusy">Download XML</button>
+        <button class="btn btn-primary" @onclick="DownloadBinary" disabled="@_isBusy">Download Binary</button>
+
     </div>
     <div>
         <table class="table">
@@ -144,7 +145,7 @@ else
             foreach (var record in _allNumbers)
             {
                 writer.Write(record.Value);
-                writer.Write(record.Value);
+                writer.Write(record.IsPrime);
             }
             var binaryContent = memoryStream.ToArray();
             await JS.InvokeVoidAsync("downloadFile", "numbers.bin", "application/octet-stream", binaryContent);
